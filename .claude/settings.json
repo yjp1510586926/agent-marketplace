@@ -1,0 +1,45 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(grep *)",
+      "Bash(find *)",
+      "Bash(pwd)",
+      "Bash(echo *)",
+      "Read(*)",
+      "Write(.agent/*)",
+      "Write(src/*)",
+      "Write(docs/*)",
+      "Write(e2e/*)",
+      "Write(contracts/*)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(sudo *)",
+      "Bash(chmod *)",
+      "Read(.env.local)",
+      "Read(.env)",
+      "Write(.env*)"
+    ]
+  },
+  "skills": {
+    "directory": ".agent/skills",
+    "enabled": [
+      "web3-development",
+      "react-typescript",
+      "frontend-design",
+      "systematic-debugging",
+      "webapp-testing"
+    ]
+  },
+  "context": {
+    "include": ["CLAUDE.md", "README.md", "package.json", "tsconfig.json"]
+  }
+}

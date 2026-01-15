@@ -1,0 +1,37 @@
+{
+  "model": "o4-mini",
+  "approval_mode": "suggest",
+  "skills": {
+    "enabled": true,
+    "path": ".agent/skills",
+    "skills": [
+      "web3-development",
+      "react-typescript",
+      "frontend-design",
+      "systematic-debugging",
+      "webapp-testing"
+    ]
+  },
+  "context": {
+    "files": [
+      "CLAUDE.md",
+      "README.md",
+      "package.json",
+      "tsconfig.json",
+      "Web3智能体任务平台（区块链智能体任务平台）PRD.md"
+    ],
+    "directories": ["src/types", "src/config"]
+  },
+  "sandbox": {
+    "permissions": {
+      "network": {
+        "allow": ["localhost:*", "127.0.0.1:*"]
+      },
+      "filesystem": {
+        "read": ["."],
+        "write": ["src", "docs", "e2e", "contracts", ".agent"]
+      }
+    }
+  },
+  "instructions": "你是 Web3 智能体任务平台的开发助手。请遵循 .agent/skills 中的技能指导进行开发。使用中文进行所有解释和文档编写。"
+}

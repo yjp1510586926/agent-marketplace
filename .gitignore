@@ -22,3 +22,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# AI CLI Tools
+# 保留配置文件，但忽略可能的缓存和会话文件
+.claude/cache/
+.claude/sessions/
+.codex/cache/
+.codex/sessions/
+
+# 测试报告
+playwright-report/
+test-results/
+coverage/

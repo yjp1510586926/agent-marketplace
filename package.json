@@ -18,7 +18,8 @@
     "react-dom": "^19.2.3",
     "react-router-dom": "^7.12.0",
     "viem": "^2.44.2",
-    "wagmi": "^2.19.5"
+    "wagmi": "^2.19.5",
+    "zustand": "^5.0.10"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
