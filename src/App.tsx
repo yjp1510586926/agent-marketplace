@@ -17,6 +17,7 @@ import { Web3Provider } from "./providers/Web3Provider";
 // Components - Layout
 import { Navbar } from "./components/layout/Navbar";
 import { MobileNav } from "./components/layout/MobileNav";
+import { Toast } from "./components/common/Toast";
 
 // Pages
 import Marketplace from "./pages/Marketplace";
@@ -55,6 +56,9 @@ const App: React.FC = () => {
 
           {/* 移动端底部导航 */}
           <MobileNav />
+
+          {/* 全局通知 */}
+          <Toast />
 
           {/* 页脚 */}
           <footer className="relative z-10 border-t border-white/5 py-10 mt-10 hidden md:block">
