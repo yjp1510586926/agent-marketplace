@@ -6,3 +6,4 @@
 // 随着项目发展，在这里导出自定义 hooks
 // export { useWallet } from "./useWallet";
 // export { useTask } from "./useTask";
+export { useCheckBalance } from "./useCheckBalance";
