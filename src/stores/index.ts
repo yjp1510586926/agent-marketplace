@@ -5,3 +5,4 @@
 
 export * from "./userStore";
 export * from "./notificationStore";
+export * from "./taskStore";
