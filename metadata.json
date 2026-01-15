@@ -1,0 +1,6 @@
+
+{
+  "name": "NexusHub Web3 Agent Marketplace",
+  "description": "A decentralized platform for hiring Web3 agents with integrated Aave finance, DAO governance, and decentralized dispute resolution.",
+  "requestFramePermissions": ["camera", "microphone"]
+}

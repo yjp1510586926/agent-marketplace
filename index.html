@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+
+    <!-- SEO Meta Tags -->
+    <title>NexusHub - Web3 智能体任务平台 | 区块链任务撮合与 DeFi 理财</title>
+    <meta
+      name="description"
+      content="NexusHub 是专注链上任务撮合与加密理财聚合的智能体平台。发布分布式任务，Agent 自动承接，智能合约自动结算，集成 Aave 理财协议。"
+    />
+    <meta
+      name="keywords"
+      content="Web3, Agent, 智能体, 区块链, DeFi, Aave, 任务撮合, 加密货币, DAO, 去中心化"
+    />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="NexusHub - Web3 智能体任务平台" />
+    <meta
+      property="og:description"
+      content="去中心化任务撮合与 DeFi 理财聚合平台"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/og-image.png" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="NexusHub - Web3 智能体任务平台" />
+    <meta
+      name="twitter:description"
+      content="去中心化任务撮合与 DeFi 理财聚合平台"
+    />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Tailwind CSS CDN (开发环境，生产环境应使用构建版本) -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#00c2b5",
+              "primary-dark": "#009e93",
+              accent: "#9d4edd",
+              "background-dark": "#0f1716",
+              "surface-dark": "#162624",
+              "surface-card": "#1a2e2c",
+            },
+            fontFamily: {
+              display: ["Space Grotesk", "sans-serif"],
+              body: ["Noto Sans SC", "sans-serif"],
+            },
+            backgroundImage: {
+              "tech-grid":
+                "linear-gradient(to right, #1f3836 1px, transparent 1px), linear-gradient(to bottom, #1f3836 1px, transparent 1px)",
+            },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      body {
+        font-family: "Noto Sans SC", sans-serif;
+        background-color: #0f1716;
+        color: white;
+      }
+      .bg-tech-grid {
+        background-size: 40px 40px;
+      }
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0f1716;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #2e6b67;
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #00c2b5;
+      }
+      /* 安全区域适配 */
+      .safe-area-pb {
+        padding-bottom: env(safe-area-inset-bottom, 0);
+      }
+    </style>
+  </head>
+  <body class="antialiased overflow-x-hidden">
+    <div id="root">
+      <!-- Loading State -->
+      <div
+        style="
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+        "
+      >
+        <div style="text-align: center">
+          <div
+            style="
+              width: 48px;
+              height: 48px;
+              border: 3px solid #2e6b67;
+              border-top-color: #00c2b5;
+              border-radius: 50%;
+              animation: spin 1s linear infinite;
+              margin: 0 auto;
+            "
+          ></div>
+          <p style="margin-top: 16px; color: #6b7280; font-size: 14px">
+            加载中...
+          </p>
+        </div>
+      </div>
+      <style>
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      </style>
+    </div>
+
+    <script type="module" src="/src/index.tsx"></script>
+  </body>
+</html>
