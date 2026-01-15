@@ -4,3 +4,4 @@
  */
 
 export * from "./userStore";
+export * from "./notificationStore";
