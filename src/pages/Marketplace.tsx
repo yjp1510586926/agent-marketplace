@@ -2,119 +2,15 @@
  * 任务市场首页
  * 展示任务列表、平台统计、快速入口
  */
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { useAccount } from "wagmi";
 
-interface Task {
-  id: number;
-  title: string;
-  budget: string;
-  tags: string[];
-  time: string;
-  desc: string;
-  complexity: "basic" | "intermediate" | "advanced" | "expert";
-  employer: {
-    name: string;
-    avatar: string;
-    rating: number;
-  };
-  applicants: number;
-}
-
-const MOCK_TASKS: Task[] = [
-  {
-    id: 1,
-    title: "智能合约安全性审计",
-    budget: "2.5 ETH",
-    tags: ["Solidity", "Audit"],
-    time: "2h ago",
-    desc: "我们需要对 DeFi 质押模块进行全面的安全审计，包括重入攻击测试。",
-    complexity: "advanced",
-    employer: {
-      name: "NexusFi",
-      avatar: "https://picsum.photos/100?1",
-      rating: 4.9,
-    },
-    applicants: 5,
-  },
-  {
-    id: 2,
-    title: "DApp 仪表盘 UI 设计",
-    budget: "800 USDT",
-    tags: ["Design", "UI/UX"],
-    time: "5h ago",
-    desc: "设计一套暗色模式的 Web3 仪表盘，风格需类似 Motion.dev 或 Linear。",
-    complexity: "intermediate",
-    employer: {
-      name: "MetaDAO",
-      avatar: "https://picsum.photos/100?2",
-      rating: 4.7,
-    },
-    applicants: 12,
-  },
-  {
-    id: 3,
-    title: "社区运营增长 (Alpha)",
-    budget: "1200 DAI",
-    tags: ["Marketing", "Twitter"],
-    time: "1d ago",
-    desc: "负责 Discord 和 Twitter 的日常运营，目标增长 20%。",
-    complexity: "basic",
-    employer: {
-      name: "AlphaLabs",
-      avatar: "https://picsum.photos/100?3",
-      rating: 4.5,
-    },
-    applicants: 8,
-  },
-  {
-    id: 4,
-    title: "Web3 连接组件开发",
-    budget: "600 USDC",
-    tags: ["React", "Wagmi"],
-    time: "1d ago",
-    desc: "使用 RainbowKit 或 Wagmi 封装通用的钱包连接 React 组件库。",
-    complexity: "intermediate",
-    employer: {
-      name: "DevGuild",
-      avatar: "https://picsum.photos/100?4",
-      rating: 4.8,
-    },
-    applicants: 3,
-  },
-  {
-    id: 5,
-    title: "NFT Marketplace 智能合约",
-    budget: "4.0 ETH",
-    tags: ["Solidity", "NFT"],
-    time: "3h ago",
-    desc: "开发一个支持 ERC-721 和 ERC-1155 的 NFT 交易市场智能合约。",
-    complexity: "expert",
-    employer: {
-      name: "ArtBlock",
-      avatar: "https://picsum.photos/100?5",
-      rating: 4.6,
-    },
-    applicants: 7,
-  },
-  {
-    id: 6,
-    title: "DeFi 协议文档撰写",
-    budget: "500 USDC",
-    tags: ["Writing", "DeFi"],
-    time: "6h ago",
-    desc: "为我们的借贷协议撰写详细的技术文档和用户指南。",
-    complexity: "basic",
-    employer: {
-      name: "LendDAO",
-      avatar: "https://picsum.photos/100?6",
-      rating: 4.4,
-    },
-    applicants: 15,
-  },
-];
+import { createMockTasks } from "../services/mockData";
+import { useTaskStore } from "../stores";
+import { formatEth, formatRelativeTime } from "../utils/format";
+import type { TaskPriority, TaskStatus } from "../types/task";
 
 const COMPLEXITY_COLORS = {
   basic: "text-green-400",
@@ -130,11 +26,31 @@ const COMPLEXITY_LABELS = {
   expert: "专家",
 };
 
+const PRIORITY_COMPLEXITY: Record<TaskPriority, keyof typeof COMPLEXITY_COLORS> =
+  {
+    low: "basic",
+    medium: "intermediate",
+    high: "advanced",
+    urgent: "expert",
+  };
+
+const EMPLOYER_PROFILES = [
+  { name: "NexusFi", avatar: "https://picsum.photos/100?1", rating: 4.9 },
+  { name: "MetaDAO", avatar: "https://picsum.photos/100?2", rating: 4.7 },
+  { name: "AlphaLabs", avatar: "https://picsum.photos/100?3", rating: 4.5 },
+  { name: "DevGuild", avatar: "https://picsum.photos/100?4", rating: 4.8 },
+  { name: "ArtBlock", avatar: "https://picsum.photos/100?5", rating: 4.6 },
+  { name: "LendDAO", avatar: "https://picsum.photos/100?6", rating: 4.4 },
+];
+
+const APPLICANT_COUNTS = [5, 12, 8, 3, 7, 15];
+
+const ETH = 1_000_000_000_000_000_000n;
+type BudgetRange = { min: bigint | null; max: bigint | null };
+
 const Marketplace: React.FC = () => {
   const { isConnected } = useAccount();
-  const [filter, setFilter] = useState<
-    "all" | "development" | "design" | "marketing"
-  >("all");
+  const { tasks, filter, setFilter, setTasks } = useTaskStore();
   const [showOnboarding, setShowOnboarding] = useState(!isConnected);
 
   const stats = [
@@ -143,22 +59,83 @@ const Marketplace: React.FC = () => {
     { label: "治理参与", value: "85%", icon: "how_to_vote", trend: "High" },
   ];
 
-  const filteredTasks =
-    filter === "all"
-      ? MOCK_TASKS
-      : MOCK_TASKS.filter((t) => {
-          if (filter === "development")
-            return t.tags.some((tag) =>
-              ["Solidity", "React", "Wagmi", "NFT"].includes(tag)
-            );
-          if (filter === "design")
-            return t.tags.some((tag) => ["Design", "UI/UX"].includes(tag));
-          if (filter === "marketing")
-            return t.tags.some((tag) =>
-              ["Marketing", "Twitter", "Writing"].includes(tag)
-            );
-          return true;
-        });
+  useEffect(() => {
+    if (tasks.length === 0) {
+      // 初始化任务列表（Mock 数据）
+      setTasks(createMockTasks());
+    }
+  }, [setTasks, tasks.length]);
+
+  const statusOptions: Array<{ id: "all" | TaskStatus; label: string }> = [
+    { id: "all", label: "全部" },
+    { id: "open", label: "开放" },
+    { id: "assigned", label: "已指派" },
+    { id: "in_progress", label: "进行中" },
+    { id: "completed", label: "已完成" },
+  ];
+
+  const skillOptions = useMemo(() => {
+    const skillSet = new Set<string>();
+    tasks.forEach((task) => task.tags.forEach((tag) => skillSet.add(tag)));
+    return Array.from(skillSet).sort((a, b) => a.localeCompare(b, "zh-CN"));
+  }, [tasks]);
+
+  const budgetOptions: Array<{
+    id: string;
+    label: string;
+    range: BudgetRange;
+  }> = [
+    { id: "all", label: "全部预算", range: { min: null, max: null } },
+    { id: "low", label: "< 1 ETH", range: { min: null, max: ETH } },
+    { id: "mid", label: "1-3 ETH", range: { min: ETH, max: 3n * ETH } },
+    { id: "high", label: "> 3 ETH", range: { min: 3n * ETH, max: null } },
+  ];
+
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((task) => {
+      // 状态筛选
+      const matchesStatus = !filter.status || task.status === filter.status;
+      // 技能筛选（支持多选）
+      const matchesSkills =
+        filter.skills.length === 0 ||
+        filter.skills.every((skill) => task.tags.includes(skill));
+      // 预算筛选
+      const matchesBudget =
+        (filter.budgetRange.min === null ||
+          task.reward >= filter.budgetRange.min) &&
+        (filter.budgetRange.max === null ||
+          task.reward <= filter.budgetRange.max);
+
+      return matchesStatus && matchesSkills && matchesBudget;
+    });
+  }, [filter, tasks]);
+
+  const activeStatus = filter.status ?? "all";
+
+  const handleStatusChange = (status: "all" | TaskStatus) => {
+    setFilter({ status: status === "all" ? null : status });
+  };
+
+  const handleSkillToggle = (skill: string | "all") => {
+    if (skill === "all") {
+      setFilter({ skills: [] });
+      return;
+    }
+
+    const nextSkills = filter.skills.includes(skill)
+      ? filter.skills.filter((item) => item !== skill)
+      : [...filter.skills, skill];
+
+    setFilter({ skills: nextSkills });
+  };
+
+  const handleBudgetChange = (range: BudgetRange) => {
+    setFilter({ budgetRange: range });
+  };
+
+  const isBudgetActive = (range: BudgetRange) =>
+    range.min === filter.budgetRange.min &&
+    range.max === filter.budgetRange.max;
 
   return (
     <div className="space-y-12 py-6">
@@ -294,25 +271,62 @@ const Marketplace: React.FC = () => {
             任务市场 (Marketplace)
           </h2>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             {/* 筛选标签 */}
             <div className="flex gap-1 p-1 bg-surface-dark rounded-xl border border-white/5">
-              {[
-                { id: "all", label: "全部" },
-                { id: "development", label: "开发" },
-                { id: "design", label: "设计" },
-                { id: "marketing", label: "运营" },
-              ].map((f) => (
+              {statusOptions.map((f) => (
                 <button
                   key={f.id}
-                  onClick={() => setFilter(f.id as any)}
+                  onClick={() => handleStatusChange(f.id)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    filter === f.id
+                    activeStatus === f.id
                       ? "bg-primary text-background-dark"
                       : "text-gray-500 hover:text-white"
                   }`}
                 >
                   {f.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-1 p-1 bg-surface-dark rounded-xl border border-white/5 flex-wrap">
+              <button
+                onClick={() => handleSkillToggle("all")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  filter.skills.length === 0
+                    ? "bg-primary text-background-dark"
+                    : "text-gray-500 hover:text-white"
+                }`}
+              >
+                全部技能
+              </button>
+              {skillOptions.map((skill) => (
+                <button
+                  key={skill}
+                  onClick={() => handleSkillToggle(skill)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    filter.skills.includes(skill)
+                      ? "bg-primary text-background-dark"
+                      : "text-gray-500 hover:text-white"
+                  }`}
+                >
+                  {skill}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-1 p-1 bg-surface-dark rounded-xl border border-white/5">
+              {budgetOptions.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => handleBudgetChange(option.range)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    isBudgetActive(option.range)
+                      ? "bg-primary text-background-dark"
+                      : "text-gray-500 hover:text-white"
+                  }`}
+                >
+                  {option.label}
                 </button>
               ))}
             </div>
@@ -324,7 +338,11 @@ const Marketplace: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTasks.map((task, i) => (
+          {filteredTasks.map((task, i) => {
+            const employer = EMPLOYER_PROFILES[i % EMPLOYER_PROFILES.length];
+            const complexity = PRIORITY_COMPLEXITY[task.priority];
+            const applicants = APPLICANT_COUNTS[i % APPLICANT_COUNTS.length];
+            return (
             <motion.div
               key={task.id}
               initial={{ opacity: 0 }}
@@ -345,7 +363,7 @@ const Marketplace: React.FC = () => {
                   ))}
                 </div>
                 <span className="text-[10px] text-gray-500 font-display">
-                  {task.time}
+                  {formatRelativeTime(task.createdAt)}
                 </span>
               </div>
 
@@ -355,19 +373,19 @@ const Marketplace: React.FC = () => {
                   {task.title}
                 </h3>
                 <p className="text-gray-400 text-xs mt-2 line-clamp-2 leading-relaxed">
-                  {task.desc}
+                  {task.description}
                 </p>
               </div>
 
               {/* Employer */}
               <div className="flex items-center gap-3">
                 <img
-                  src={task.employer.avatar}
-                  alt={task.employer.name}
+                  src={employer.avatar}
+                  alt={employer.name}
                   className="size-8 rounded-full object-cover"
                 />
                 <div className="flex-1">
-                  <p className="text-xs font-bold">{task.employer.name}</p>
+                  <p className="text-xs font-bold">{employer.name}</p>
                   <div className="flex items-center gap-1">
                     <span
                       className="material-symbols-outlined text-yellow-500 text-xs"
@@ -376,16 +394,16 @@ const Marketplace: React.FC = () => {
                       star
                     </span>
                     <span className="text-[10px] text-gray-500">
-                      {task.employer.rating}
+                      {employer.rating}
                     </span>
                   </div>
                 </div>
                 <span
                   className={`text-[10px] font-bold ${
-                    COMPLEXITY_COLORS[task.complexity]
+                    COMPLEXITY_COLORS[complexity]
                   }`}
                 >
-                  {COMPLEXITY_LABELS[task.complexity]}
+                  {COMPLEXITY_LABELS[complexity]}
                 </span>
               </div>
 
@@ -396,12 +414,12 @@ const Marketplace: React.FC = () => {
                     Budget
                   </p>
                   <p className="text-lg font-display font-bold">
-                    {task.budget}
+                    {formatEth(task.reward)} ETH
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-gray-500">
-                    {task.applicants} 申请
+                    {applicants} 申请
                   </span>
                   <Link
                     to={`/task/${task.id}`}
@@ -412,7 +430,8 @@ const Marketplace: React.FC = () => {
                 </div>
               </div>
             </motion.div>
-          ))}
+          );
+          })}
         </div>
 
         {/* 加载更多 */}
