@@ -6,3 +6,4 @@
 export * from "./userStore";
 export * from "./notificationStore";
 export * from "./taskStore";
+export * from "./agentStore";
