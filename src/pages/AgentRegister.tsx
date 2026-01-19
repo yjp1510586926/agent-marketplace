@@ -2,10 +2,18 @@
  * Agent 注册/认证页面
  * 包含链上身份登记、技能标签设置、服务等级选择
  */
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAccount } from "wagmi";
+import { useForm, useWatch } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import type { Hex } from "viem";
+import { TxProgressModal } from "../components/common/TxProgressModal";
+import { toast } from "../utils/toast";
+import { useCheckBalance } from "../hooks/useCheckBalance";
+import type { TxStatus } from "../hooks/useTxStatus";
 
 const SKILL_OPTIONS = [
   {
@@ -102,31 +110,127 @@ const SERVICE_LEVELS = [
   },
 ];
 
+const formSchema = z.object({
+  displayName: z.string().trim().min(1, "请输入显示名称"),
+  bio: z.string().trim().optional(),
+  portfolio: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z
+      .string()
+      .url("请输入正确的链接")
+      .optional()
+  ),
+  skills: z.array(z.string()).min(1, "至少选择 1 个技能"),
+  level: z.enum(["starter", "professional", "expert"]),
+  agreedToTerms: z.literal(true, "请先同意服务条款与隐私政策"),
+});
+
+type AgentRegisterForm = z.infer<typeof formSchema>;
+
+const createMockHash = () => {
+  const randomHex = Array.from({ length: 64 }, () =>
+    Math.floor(Math.random() * 16).toString(16)
+  ).join("");
+  return `0x${randomHex}` as Hex;
+};
+
 const AgentRegister: React.FC = () => {
   const { isConnected, address } = useAccount();
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-  const [selectedLevel, setSelectedLevel] = useState<string>("professional");
-  const [displayName, setDisplayName] = useState("");
-  const [bio, setBio] = useState("");
-  const [portfolio, setPortfolio] = useState("");
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const navigate = useNavigate();
+  const [txModalOpen, setTxModalOpen] = useState(false);
+  const [txStatus, setTxStatus] = useState<TxStatus>("idle");
+  const [txHash, setTxHash] = useState<Hex | undefined>(undefined);
+  const mockTimersRef = useRef<number[]>([]);
+  const { checkBalance, isLoading: isBalanceLoading } = useCheckBalance({
+    tokenSymbol: "WAG",
+  });
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<AgentRegisterForm>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      displayName: "",
+      bio: "",
+      portfolio: "",
+      skills: [],
+      level: "professional",
+      agreedToTerms: false,
+    },
+  });
+
+  const formSkills = useWatch({ control, name: "skills" });
+  const formLevel = useWatch({ control, name: "level" });
+  const displayName = useWatch({ control, name: "displayName" });
+
+  const selectedLevel = useMemo(
+    () => SERVICE_LEVELS.find((level) => level.id === formLevel),
+    [formLevel]
+  );
+
+  const clearMockTimers = () => {
+    mockTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    mockTimersRef.current = [];
+  };
 
   const handleSkillToggle = (skill: string) => {
-    setSelectedSkills((prev) =>
-      prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
-    );
+    const currentSkills = formSkills ?? [];
+    const nextSkills = currentSkills.includes(skill)
+      ? currentSkills.filter((item) => item !== skill)
+      : [...currentSkills, skill];
+    setValue("skills", nextSkills, { shouldValidate: true, shouldDirty: true });
   };
 
-  const handleSubmit = () => {
-    // TODO: 调用智能合约注册 Agent
-    console.log("注册 Agent:", {
-      displayName,
-      bio,
-      portfolio,
-      skills: selectedSkills,
-      level: selectedLevel,
-    });
+  const startMockRegister = () => {
+    clearMockTimers();
+    // 模拟交易生命周期：签名 -> 确认 -> 成功
+    setTxModalOpen(true);
+    setTxStatus("pending");
+    setTxHash(undefined);
+
+    const pendingTimer = window.setTimeout(() => {
+      setTxHash(createMockHash());
+      setTxStatus("confirming");
+    }, 900);
+
+    const successTimer = window.setTimeout(() => {
+      setTxStatus("success");
+      toast.success({ message: "注册成功，已跳转到个人页面。" });
+      setTxModalOpen(false);
+      navigate("/profile");
+    }, 2200);
+
+    mockTimersRef.current = [pendingTimer, successTimer];
   };
+
+  const handleFormSubmit = (values: AgentRegisterForm) => {
+    // 提交前校验余额
+    const stakeAmount = Number(selectedLevel?.stake ?? 0);
+    if (stakeAmount > 0) {
+      if (isBalanceLoading) {
+        toast.info({ message: "余额加载中，请稍后再试。" });
+        return;
+      }
+      if (!checkBalance({ amount: selectedLevel?.stake ?? "0" })) {
+        return;
+      }
+    }
+
+    // TODO: 对接真实合约时替换为链上交易逻辑
+    console.log("注册 Agent:", values);
+    startMockRegister();
+  };
+
+  useEffect(() => {
+    return () => {
+      // 页面卸载时清理定时器
+      clearMockTimers();
+    };
+  }, []);
 
   if (!isConnected) {
     return (
@@ -161,6 +265,17 @@ const AgentRegister: React.FC = () => {
 
   return (
     <div className="py-6 space-y-8">
+      <TxProgressModal
+        open={txModalOpen}
+        status={txStatus}
+        statusMessage="正在提交注册交易，请稍候"
+        hash={txHash}
+        onClose={() => {
+          clearMockTimers();
+          setTxStatus("idle");
+          setTxModalOpen(false);
+        }}
+      />
       {/* 页面标题 */}
       <div>
         <Link
@@ -174,7 +289,10 @@ const AgentRegister: React.FC = () => {
         <p className="text-gray-400 mt-1">登记链上身份，开始承接任务</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <form
+        onSubmit={handleSubmit(handleFormSubmit)}
+        className="grid grid-cols-1 lg:grid-cols-12 gap-8"
+      >
         {/* 主表单区 */}
         <div className="lg:col-span-8 space-y-6">
           {/* 基本信息 */}
@@ -213,11 +331,13 @@ const AgentRegister: React.FC = () => {
               </label>
               <input
                 type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
+                {...register("displayName")}
                 placeholder="例如：CryptoDev.eth"
                 className="w-full px-4 py-3 rounded-xl bg-background-dark border border-white/10 text-white placeholder:text-gray-600 focus:border-primary/50 focus:outline-none transition-colors"
               />
+              {errors.displayName && (
+                <p className="text-xs text-accent">{errors.displayName.message}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -225,8 +345,7 @@ const AgentRegister: React.FC = () => {
                 个人简介
               </label>
               <textarea
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
+                {...register("bio")}
                 placeholder="介绍您的专业背景、项目经验..."
                 rows={3}
                 className="w-full px-4 py-3 rounded-xl bg-background-dark border border-white/10 text-white placeholder:text-gray-600 focus:border-primary/50 focus:outline-none transition-colors resize-none"
@@ -239,11 +358,13 @@ const AgentRegister: React.FC = () => {
               </label>
               <input
                 type="url"
-                value={portfolio}
-                onChange={(e) => setPortfolio(e.target.value)}
+                {...register("portfolio")}
                 placeholder="https://github.com/yourname 或其他作品集"
                 className="w-full px-4 py-3 rounded-xl bg-background-dark border border-white/10 text-white placeholder:text-gray-600 focus:border-primary/50 focus:outline-none transition-colors"
               />
+              {errors.portfolio && (
+                <p className="text-xs text-accent">{errors.portfolio.message}</p>
+              )}
             </div>
           </motion.div>
 
@@ -262,7 +383,7 @@ const AgentRegister: React.FC = () => {
                 技能标签
               </h2>
               <span className="text-xs text-gray-500">
-                已选 {selectedSkills.length} 项
+                已选 {formSkills?.length ?? 0} 项
               </span>
             </div>
 
@@ -276,9 +397,10 @@ const AgentRegister: React.FC = () => {
                     {group.skills.map((skill) => (
                       <button
                         key={skill}
+                        type="button"
                         onClick={() => handleSkillToggle(skill)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                          selectedSkills.includes(skill)
+                          formSkills?.includes(skill)
                             ? "bg-primary text-background-dark"
                             : "bg-surface-dark text-gray-400 border border-white/10 hover:border-primary/30"
                         }`}
@@ -290,6 +412,9 @@ const AgentRegister: React.FC = () => {
                 </div>
               ))}
             </div>
+            {errors.skills && (
+              <p className="text-xs text-accent">{errors.skills.message}</p>
+            )}
           </motion.div>
 
           {/* 服务等级 */}
@@ -310,9 +435,15 @@ const AgentRegister: React.FC = () => {
               {SERVICE_LEVELS.map((level) => (
                 <button
                   key={level.id}
-                  onClick={() => setSelectedLevel(level.id)}
+                  type="button"
+                  onClick={() =>
+                    setValue("level", level.id, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    })
+                  }
                   className={`relative p-6 rounded-2xl border text-left transition-all ${
-                    selectedLevel === level.id
+                    formLevel === level.id
                       ? "border-primary bg-primary/5"
                       : "border-white/5 bg-surface-dark hover:border-white/20"
                   }`}
@@ -369,8 +500,7 @@ const AgentRegister: React.FC = () => {
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
-                checked={agreedToTerms}
-                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                {...register("agreedToTerms")}
                 className="mt-1 accent-primary"
               />
               <span className="text-sm text-gray-400">
@@ -385,16 +515,19 @@ const AgentRegister: React.FC = () => {
                 ， 并理解所有交易记录将公开存储于区块链上。
               </span>
             </label>
+            {errors.agreedToTerms && (
+              <p className="mt-2 text-xs text-accent">
+                {errors.agreedToTerms.message}
+              </p>
+            )}
 
             <button
-              onClick={handleSubmit}
-              disabled={
-                !displayName || selectedSkills.length === 0 || !agreedToTerms
-              }
+              type="submit"
+              disabled={isSubmitting}
               className="w-full mt-6 py-4 rounded-xl bg-gradient-to-r from-primary to-accent text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_30px_rgba(0,194,181,0.4)] transition-all flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined">verified</span>
-              确认注册成为 Agent
+              {isSubmitting ? "提交中..." : "确认注册成为 Agent"}
             </button>
           </motion.div>
         </div>
@@ -478,26 +611,25 @@ const AgentRegister: React.FC = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">技能数量</span>
-                  <span className="font-bold">{selectedSkills.length} 项</span>
+                  <span className="font-bold">{formSkills?.length ?? 0} 项</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">服务等级</span>
                   <span className="font-bold text-primary">
-                    {SERVICE_LEVELS.find((l) => l.id === selectedLevel)?.name}
+                    {selectedLevel?.name}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">需质押</span>
                   <span className="font-bold">
-                    {SERVICE_LEVELS.find((l) => l.id === selectedLevel)?.stake}{" "}
-                    WAG
+                    {selectedLevel?.stake ?? "0"} WAG
                   </span>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </form>
     </div>
   );
 };
